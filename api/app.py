@@ -526,4 +526,12 @@ if __name__ == '__main__':
     print(f"📁 Upload folder: {UPLOAD_FOLDER}")
     print(f"📊 Output folder: {OUTPUT_FOLDER}")
     print("=" * 60)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import streamlit as st
+
+    st.title("InsightPilotAI API")
+
+    if st.button("Run API"):
+        result = run_api()
+        st.write(result)
+
+
