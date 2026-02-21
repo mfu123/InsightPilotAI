@@ -8,8 +8,6 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import sys
 from pathlib import Path
-import streamlit as st
-from api.app import run_api
 
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -528,12 +526,6 @@ if __name__ == '__main__':
     print(f"📁 Upload folder: {UPLOAD_FOLDER}")
     print(f"📊 Output folder: {OUTPUT_FOLDER}")
     print("=" * 60)
-    import streamlit as st
-
-    st.title("InsightPilotAI API")
-
-    if st.button("Run API"):
-        result = run_api()
-        st.write(result)
+    app.run(debug=True, host='0.0.0.0', port=5000)
 
 

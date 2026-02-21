@@ -12,7 +12,8 @@ flask>=3.0.0
 flask-cors>=4.0.0
 werkzeug>=3.0.0
 openpyxl>=3.1.0
+streamlit>=1.28.0
 
-# Optional (for local PDF export only; NOT required on Vercel)
+# Optional (for local PDF export only; NOT required on Vercel/Streamlit)
 # playwright>=1.40.0    # Requires: playwright install chromium
 # xhtml2pdf>=0.2.11     # Pulls in pycairo + system cairo; breaks Vercel build
