@@ -15,10 +15,55 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Add src to path
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.agents import DataUnderstandingAgent, AnalysisPlannerAgent, InsightGeneratorAgent
-from src.engine import StatisticalEngine
-from src.visualization import VisualizationAgent
-from src.report import DashboardGenerator
+# Import agents with error handling for Vercel
+AGENTS_AVAILABLE = False
+try:
+    from src.agents import DataUnderstandingAgent, AnalysisPlannerAgent, InsightGeneratorAgent
+    from src.engine import StatisticalEngine
+    from src.visualization import VisualizationAgent
+    from src.report import DashboardGenerator
+    AGENTS_AVAILABLE = True
+    print("✓ Successfully imported all agents")
+except ImportError as e:
+    import traceback
+    print(f"✗ Failed to import agents: {e}")
+    print(f"Traceback: {traceback.format_exc()}")
+    # Create dummy classes to prevent crashes
+    class DataUnderstandingAgent:
+        def __init__(self, *args, **kwargs):
+            raise Exception("DataUnderstandingAgent not available - import failed")
+    class AnalysisPlannerAgent:
+        def __init__(self, *args, **kwargs):
+            raise Exception("AnalysisPlannerAgent not available - import failed")
+    class InsightGeneratorAgent:
+        def __init__(self, *args, **kwargs):
+            raise Exception("InsightGeneratorAgent not available - import failed")
+    class StatisticalEngine:
+        def __init__(self, *args, **kwargs):
+            raise Exception("StatisticalEngine not available - import failed")
+    class VisualizationAgent:
+        def __init__(self, *args, **kwargs):
+            raise Exception("VisualizationAgent not available - import failed")
+    class DashboardGenerator:
+        def __init__(self, *args, **kwargs):
+            raise Exception("DashboardGenerator not available - import failed")
+except Exception as e:
+    import traceback
+    print(f"✗ Unexpected error importing agents: {e}")
+    print(f"Traceback: {traceback.format_exc()}")
+    # Create dummy classes
+    class DataUnderstandingAgent:
+        pass
+    class AnalysisPlannerAgent:
+        pass
+    class InsightGeneratorAgent:
+        pass
+    class StatisticalEngine:
+        pass
+    class VisualizationAgent:
+        pass
+    class DashboardGenerator:
+        pass
 
 # Import PDF generator (optional - may fail if libraries not installed)
 try:
@@ -32,14 +77,36 @@ except ImportError as e:
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
+# Add error handler for unhandled exceptions
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle all unhandled exceptions."""
+    import traceback
+    error_trace = traceback.format_exc()
+    print(f"Unhandled exception: {error_trace}")
+    return jsonify({
+        'error': str(e),
+        'type': type(e).__name__
+    }), 500
+
 # Configuration - use absolute paths from project root
-UPLOAD_FOLDER = PROJECT_ROOT / 'uploads'
-OUTPUT_FOLDER = PROJECT_ROOT / 'output'
+# For Vercel serverless, use /tmp for temporary files
+if os.environ.get('VERCEL'):
+    UPLOAD_FOLDER = Path('/tmp/uploads')
+    OUTPUT_FOLDER = Path('/tmp/output')
+else:
+    UPLOAD_FOLDER = PROJECT_ROOT / 'uploads'
+    OUTPUT_FOLDER = PROJECT_ROOT / 'output'
+
 ALLOWED_EXTENSIONS = {'csv'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+# Create directories if they don't exist
+try:
+    os.makedirs(str(UPLOAD_FOLDER), exist_ok=True)
+    os.makedirs(str(OUTPUT_FOLDER), exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create directories: {e}")
 
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
@@ -53,10 +120,31 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint."""
+    return jsonify({
+        'message': 'InsightPilot AI API',
+        'status': 'running',
+        'endpoints': ['/api/health', '/api/upload', '/api/progress/<task_id>', '/api/chat']
+    })
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
-    return jsonify({'status': 'healthy', 'message': 'AI Analyst API is running'})
+    try:
+        return jsonify({
+            'status': 'healthy', 
+            'message': 'AI Analyst API is running',
+            'agents_available': AGENTS_AVAILABLE,
+            'pdf_available': PDF_AVAILABLE,
+            'vercel': bool(os.environ.get('VERCEL'))
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 
 def update_progress(task_id, stage, progress_percent, message=''):
@@ -72,6 +160,9 @@ def update_progress(task_id, stage, progress_percent, message=''):
 def process_file_async(filepath, task_id, timestamp):
     """Process file asynchronously with progress tracking."""
     try:
+        if not AGENTS_AVAILABLE:
+            raise Exception("Agents not available - import failed")
+        
         start_time = time.time()
         
         # Initialize progress
