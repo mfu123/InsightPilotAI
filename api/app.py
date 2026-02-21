@@ -8,6 +8,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import sys
 from pathlib import Path
+import streamlit as st
+from api.app import run_api
 
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
